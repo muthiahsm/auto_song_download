@@ -16,7 +16,7 @@ https://www.python.org/downloads/
 
 step 2:
 
-once the python installation completed,executing following command in command prompt helps to install additional packages.  Alternate: you can use "easy_install"
+once the python installation completed,executing following command in command prompt helps to install additional packages.  Alternate: you can use "easy_install" instead of pip
 
 pip install selenium
 pip install urllib3
@@ -28,7 +28,7 @@ chrome web driver: download the latest version from the below site
 
 https://sites.google.com/a/chromium.org/chromedriver/downloads
 
-this will be a zip file. Once downloaded extract the file in the local file system and mention the path config.py
+this is a zip file. Once downloaded extract the file in the local file system and mention the path in "config.py"
 
 step 4:
 
