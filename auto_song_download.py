@@ -18,10 +18,12 @@ sleep_time_value_sec=3
 thread_list=[]
 st=""
 et=""
+
 s3 = aws.resource('s3')
 
 class AppURLopener(urllib.request.FancyURLopener):
     version = "Mozilla/5.0"
+
 opener = AppURLopener()
 
 if os.name == "posix":
