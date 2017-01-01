@@ -8,12 +8,17 @@ import threading
 import sys
 import os
 import config as cfg
+import boto3 as aws
 
 
 album_name=""
 fan=""
 album_download_counter=0
 sleep_time_value_sec=3
+thread_list=[]
+st=""
+et=""
+s3 = aws.resource('s3')
 
 class AppURLopener(urllib.request.FancyURLopener):
     version = "Mozilla/5.0"
@@ -22,26 +27,48 @@ opener = AppURLopener()
 if os.name == "posix":
     driver_path=cfg.mac_web_driver_path
     base_dir=cfg.mac_base_dir
+    tmp=cfg.nw_tmp
 else:
     driver_path = cfg.win_web_driver_path
     base_dir = cfg.win_base_dir
-
+    tmp=cfg.win_tmp
+if cfg.s3_storage == "YES" :
+    base_dir=cfg.nw_tmp
+    base_bucket=cfg.s3_bucket
 artist_filter=cfg.artist_filter
+
+# s3 = aws.client(
+#     's3',
+#     aws_access_key_id=cfg.aws_access_key,
+#     aws_secret_access_key=cfg.aws_secret_key
+# )
 
 driver=webdriver.Chrome(driver_path)
 
+def s3_list():
 
+    s3_file_access = open(base_dir + "album_file", 'w')
+    print("creating s3 album list")
+    for folder_path in s3.Bucket(base_bucket).objects.all():
+        folder='/'.join(folder_path.key.split('/')[0:-1])
+        print(folder)
+        s3_file_access.write(folder)
+        s3_file_access.write("\n")
+    s3_file_access.close()
 
 def create_album_file_list():
 
-    file_access = open(base_dir + "album_file", 'w')
+    if cfg.s3_storage != "YES" :
+        file_access = open(base_dir + "album_file", 'w')
 
-    for d in os.listdir(base_dir):
-        # print(d)
-        file_access.write(d)
-        file_access.write("\n")
+        for d in os.listdir(base_dir):
+            # print(d)
+            file_access.write(d)
+            file_access.write("\n")
 
-    file_access.close()
+        file_access.close()
+    else :
+        s3_list()
 
 def launch_site():
 
@@ -136,17 +163,21 @@ def album_selector():
     print ("Over all total download so far: ",album_download_counter)
 
 def create_dir(base_dir, fan):
-    if not os.path.exists(base_dir + fan):
+    if cfg.s3_storage != "YES" :
+        if not os.path.exists(base_dir + fan):
 
-        print("creating the album directory ...")
-        os.mkdir(base_dir + fan)
+            print("creating the album directory ...")
+            os.mkdir(base_dir + fan)
+
 
 def song_downloader():
 
     global album_name
     global fan
     download_counter=0
-    thread_list=[]
+    global thread_list
+    global st
+    global et
 
     try:
         st = time.time()
@@ -161,18 +192,10 @@ def song_downloader():
                 url_last_segment=atri.split('/')[-1]
                 fn=url_last_segment.replace("%20","")
                 print ("Downloading song #: " , download_counter , fn )
-                os.chdir(base_dir + fan)
-                if cfg.PT != "YES":
-                #response = opener.retrieve(atri,fn)
-                    npst = time.time()
-                    opener.retrieve(atri, fn)
-                    npt=time.time() - npst
-                    print("completed song download in sec", npt)
+                if cfg.s3_storage != "YES":
+                    fun_local_disk_storage(atri, base_dir, fan, fn)
                 else:
-                   # print("in thread add loop")
-                    t = threading.Thread(target=fun_parallel,args=(atri,fn))
-                    thread_list.append(t)
-
+                    fun_s3_storage(atri, base_bucket, fan, fn)
         #print(cfg.PT)
 
         if cfg.PT == "YES" :
@@ -204,10 +227,52 @@ def song_downloader():
         time.sleep(sleep_time_value_sec)
         pass
 
-def fun_parallel(atri,fn):
+def fun_parallel(atri, base_bucket, fan, fn):
 
-    opener.retrieve(atri, fn)
+    if cfg.s3_storage != "YES":
+
+        opener.retrieve(atri, fn)
+    else:
+
+        with opener.open(atri) as data:
+            print("storing data in s3")
+            s3.meta.client.upload_fileobj(data, base_bucket, fan + '/' + fn)
+
+def fun_local_disk_storage(atri, base_dir, fan, fn):
+
+    global thread_list
+   # global st
+   # global et
+
+    os.chdir(base_dir + fan)
+    if cfg.PT != "YES":
+        # response = opener.retrieve(atri,fn)
+        npst = time.time()
+        opener.retrieve(atri, fn)
+        npt = time.time() - npst
+        print("completed song download in sec", npt)
+    else:
+        # print("in thread add loop")
+        t = threading.Thread(target=fun_parallel, args=(atri, base_bucket, fan, fn))
+        thread_list.append(t)
+
+def fun_s3_storage(atri, base_bucket, fan, fn):
+
+    global thread_list
+
+    if cfg.PT != "YES":
+
+        with opener.open(atri) as data:
+            print("storing data in s3")
+            s3.meta.client.upload_fileobj(data, base_bucket, fan + '/' + fn)
+    else:
+
+        t = threading.Thread(target=fun_parallel, args=(atri, base_bucket, fan, fn))
+        thread_list.append(t)
+def tearDown():
+    print("Browser closed...")
+    driver.close()
 
 launch_site()
 album_index_selector()
-
+tearDown()

@@ -4,6 +4,14 @@
 
 win_base_dir="C:\\Users\\muthiah.somasundaram\\songs\\"
 
+# windows temp dir
+
+win_tmp="c:\\temp\\"
+
+#non windows temp dir
+
+nw_tmp="/tmp/"
+
 #Song storage path for mac platform. if not used leave it empty
 
 mac_base_dir="//Users//muthiah//Music//san//"
@@ -30,3 +38,9 @@ site_url="http://www.tamilabeat.com/tamilsongs/movies%20a%20to%20z/"
 # Parallel song download YES / NO. this improves song download performance by 50%
 
 PT="NO"
+
+# Amazon web services (AWS) access key
+s3_storage="NO" # value could be eiter YES / NO
+aws_access_key=""
+aws_secret_key=""
+s3_bucket="asd"
